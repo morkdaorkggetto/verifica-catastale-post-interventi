@@ -7,6 +7,13 @@ export type PlantInput = {
   residual: number;
   share: number;
   alreadyIncluded: boolean;
+  typeId?: string;
+  interventionNature?: string;
+  baselineCost?: number;
+  powerKw?: number;
+  servedUnits?: number;
+  groundMounted?: boolean;
+  groundVolume?: number;
 };
 
 export type CalculatedPlant = PlantInput & {
@@ -14,6 +21,11 @@ export type CalculatedPlant = PlantInput & {
   depreciation: number;
   allocatedCost: number;
   adjustedValue: number;
+  ordinaryNewValue: number;
+  baselineValue: number;
+  assessableCost: number;
+  exclusionReason: string | null;
+  exclusion: null | { code: string; label: string; source: string };
 };
 
 export const coefficients: Readonly<Record<number, number>>;
@@ -48,4 +60,8 @@ export function calculateScenario(input: {
   thresholdSource: "benchmark" | "local-tariff";
   margin: number;
   meetsThreshold: boolean;
+  benchmarkMet: boolean;
+  localGapMet: boolean | null;
+  convergenceStatus: "benchmark-only" | "convergent-above" | "convergent-below" | "borderline";
+  excludedRows: CalculatedPlant[];
 };

@@ -25,6 +25,15 @@
 - esportazione PDF e JSON del caso;
 - numero di versione del motore e delle fonti applicate.
 
+## 0.4 — Catalogo e gate impiantistici
+
+- categorie tecniche coerenti con D.M. 6 agosto 2020 e vademecum ENEA;
+- gate fotovoltaici della Circolare 36/E/2013;
+- natura dell’intervento e valorizzazione incrementale delle sostituzioni;
+- separazione fra classificazione energetica e criterio catastale;
+- doppio riscontro fra benchmark del 15% e scarto tariffario locale;
+- motivazione delle esclusioni nella relazione esportabile.
+
 ## 1.0 — Distribuzione
 
 - revisione tecnico-legale indipendente;

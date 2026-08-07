@@ -4,13 +4,13 @@ import { buildMarkdownReport, buildRtfReport, reportFileName } from "../lib/repo
 
 const base = {
   generatedAt: "7 agosto 2026",
-  technician: { name: "", qualification: "Architetto", register: "", registrationNumber: "", office: "Napoli" },
-  unit: { caseName: "Caso Rossi", municipality: "Giugliano in Campania", censusZone: "", sheet: "53", parcel: "362", sub: "15", category: "A/2", cadastralClass: "2", rent: 800, currentTariff: 0, nextTariff: 0 },
+  technician: { name: "", qualification: "Tecnico abilitato", register: "", registrationNumber: "", office: "Località di esempio" },
+  unit: { caseName: "Caso dimostrativo", municipality: "Comune fittizio", censusZone: "", sheet: "", parcel: "", sub: "", category: "A/2", cadastralClass: "2", rent: 800, currentTariff: 0, nextTariff: 0 },
   coherence: "yes",
   changes: [],
   analysisPath: "plants",
-  plants: [{ description: "Fotovoltaico", year: 2023, cost: 10_000, share: 100 }],
-  calculation: { rows: [{ adjustedValue: 3_000 }], multiplier: 100, valueBefore: 80_000, plantValue: 3_000, valueAfter: 83_000, incidence: 3.75, threshold: 15, thresholdSource: "benchmark" },
+  plants: [{ typeId: "photovoltaic", description: "Fotovoltaico", variant: "Su edificio", interventionNature: "new", powerKw: 6, year: 2023, cost: 10_000, costSource: "Computo metrico", usefulLife: 20, residual: 0, share: 100 }],
+  calculation: { rows: [{ adjustedValue: 3_000, exclusionReason: null }], multiplier: 100, valueBefore: 80_000, plantValue: 3_000, valueAfter: 83_000, incidence: 3.75, threshold: 15, thresholdSource: "benchmark", localGap: null, convergenceStatus: "benchmark-only" },
   factors: [],
   evidence: {},
   notes: "Verifica effettuata su documentazione disponibile.",
@@ -20,7 +20,7 @@ const base = {
 test("adds placeholders only for missing report fields", () => {
   const markdown = buildMarkdownReport(base);
   assert.match(markdown, /Nome e cognome: \[\[DA INSERIRE: NOME E COGNOME DEL TECNICO\]\]/);
-  assert.match(markdown, /Qualifica professionale: Architetto/);
+  assert.match(markdown, /Qualifica professionale: Tecnico abilitato/);
   assert.doesNotMatch(markdown, /DA INSERIRE: COMUNE/);
 });
 
@@ -28,6 +28,8 @@ test("describes the selected plant method and calculated values", () => {
   const markdown = buildMarkdownReport(base);
   assert.match(markdown, /Metodo economico per il mero ampliamento impiantistico/);
   assert.match(markdown, /Incidenza calcolata: 3,75%/);
+  assert.match(markdown, /Regola catastale specifica/);
+  assert.match(markdown, /Fonte del valore: Computo metrico/);
 });
 
 test("creates an RTF document with unicode escapes", () => {

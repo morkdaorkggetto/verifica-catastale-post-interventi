@@ -13,8 +13,12 @@ Il progetto nasce dall’analisi del foglio **“Verifica necessità Accatastame
 - ragguaglia il valore degli impianti all’epoca censuaria 1988–1989;
 - ripartisce impianti comuni per quota riferibile alla singola UIU;
 - esclude gli impianti già considerati nella rendita in atti;
+- classifica fotovoltaico, accumulo, pompe di calore, sistemi ibridi, generatori, solare termico e altre dotazioni con campi tecnici pertinenti;
+- applica al fotovoltaico i gate specifici di potenza e volume della Circolare 36/E/2013;
+- distingue nuova installazione, ampliamento, sostituzione equivalente e sostituzione migliorativa;
+- per le sostituzioni migliorative valorizza soltanto la differenza documentata rispetto alla dotazione equivalente preesistente;
 - separa tre livelli: mutazioni oggettive, mero ampliamento impiantistico e comparazione qualitativa;
-- permette di sostituire il benchmark del 15% con lo scarto reale fra tariffe di classi contigue;
+- confronta il benchmark operativo del 15% con lo scarto reale fra tariffe di classi contigue e segnala l’eventuale divergenza;
 - organizza il confronto con unità tipo e immobili comparabili senza trasformarlo in un punteggio arbitrario;
 - dichiara per ogni esito metodo applicato, attendibilità, limiti e passaggi successivi;
 - restituisce un esito graduato e motivato, non un automatismo privo di contesto;
@@ -48,6 +52,7 @@ I dati inseriti restano nel `localStorage` del browser: il progetto non include 
 
 - `app/` — interfaccia e stili;
 - `lib/cadastral.mjs` — motore di calcolo indipendente dall’interfaccia;
+- `lib/plants.mjs` — catalogo tecnico, natura degli interventi e gate fotovoltaici;
 - `lib/report.mjs` — generatore delle relazioni Markdown e RTF;
 - `tests/calculation.test.mjs` — casi numerici e controlli sui moltiplicatori;
 - `docs/decision-model.md` — albero decisionale e significato degli esiti;
@@ -56,6 +61,8 @@ I dati inseriti restano nel `localStorage` del browser: il progetto non include 
 
 ## Stato del progetto
 
-Versione 0.3, destinata a verifica tecnica. La tabella annuale dei coefficienti deriva dal foglio 2026 del Collegio di Trento: la fonte statistica primaria e il processo di aggiornamento devono essere formalizzati prima della pubblicazione generalizzata.
+Versione 0.4, destinata a verifica tecnica. La tabella annuale dei coefficienti deriva dal foglio 2026 del Collegio di Trento: la fonte statistica primaria e il processo di aggiornamento devono essere formalizzati prima della pubblicazione generalizzata.
+
+Le categorie ENEA sono impiegate esclusivamente per descrivere correttamente gli impianti. Massimali, costi specifici e requisiti energetici delle agevolazioni non vengono assunti come valori catastali.
 
 Il software è uno strumento di supporto e non sostituisce il giudizio del professionista, la simulazione DOCFA o il confronto con le unità tipo e il quadro tariffario della zona censuaria.

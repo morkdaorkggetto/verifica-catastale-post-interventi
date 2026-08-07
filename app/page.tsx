@@ -6,6 +6,7 @@ import {
   coefficients,
   evaluateComparison,
 } from "../lib/cadastral.mjs";
+import { interventionNatures, plantCatalog, plantTypeFor } from "../lib/plants.mjs";
 import { buildMarkdownReport, buildRtfReport, reportFileName } from "../lib/report.mjs";
 
 type ChangeKey = "destination" | "consistency" | "distribution" | "shape";
@@ -16,9 +17,20 @@ type FactorKey = "envelope" | "plants" | "finishes" | "distribution" | "services
 
 type Plant = {
   id: number;
+  typeId: string;
   description: string;
+  interventionNature: string;
+  variant: string;
+  metricValue: number;
+  powerKw: number;
+  servedUnits: number;
+  shared: boolean;
+  groundMounted: boolean;
+  groundVolume: number;
   year: number;
   cost: number;
+  baselineCost: number;
+  costSource: string;
   usefulLife: number;
   residual: number;
   share: number;
@@ -95,14 +107,37 @@ const defaultTechnician = {
 
 const newPlant = (id = 1): Plant => ({
   id,
+  typeId: "photovoltaic",
   description: "Impianto fotovoltaico",
+  interventionNature: "new",
+  variant: "Su edificio",
+  metricValue: 0,
+  powerKw: 0,
+  servedUnits: 1,
+  shared: false,
+  groundMounted: false,
+  groundVolume: 0,
   year: 2023,
   cost: 0,
+  baselineCost: 0,
+  costSource: "",
   usefulLife: 20,
   residual: 0,
   share: 100,
   alreadyIncluded: false,
 });
+
+function normalizePlant(plant: Partial<Plant>, index: number): Plant {
+  const inferredType = plant.typeId ?? (plant.description?.toLowerCase().includes("fotovolta") ? "photovoltaic" : "other_fixed");
+  const type = plantTypeFor(inferredType);
+  return {
+    ...newPlant(Number(plant.id) || index + 1),
+    ...plant,
+    typeId: inferredType,
+    description: plant.description || type.label,
+    variant: plant.variant || type.variants[0],
+  };
+}
 
 const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
 const percent = new Intl.NumberFormat("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -130,7 +165,7 @@ export default function Home() {
           if (parsed.coherence) setCoherence(parsed.coherence);
           if (parsed.changes) setChanges({ ...defaultChanges, ...parsed.changes });
           if (parsed.analysisPath) setAnalysisPath(parsed.analysisPath);
-          if (Array.isArray(parsed.plants) && parsed.plants.length) setPlants(parsed.plants);
+          if (Array.isArray(parsed.plants) && parsed.plants.length) setPlants(parsed.plants.map(normalizePlant));
           if (parsed.factors) setFactors({ ...defaultFactors, ...parsed.factors });
           if (parsed.evidence) setEvidence({ ...defaultEvidence, ...parsed.evidence });
           if (parsed.technician) setTechnician({ ...defaultTechnician, ...parsed.technician });
@@ -198,25 +233,58 @@ export default function Home() {
       };
     }
     if (analysisPath === "plants") {
-      if (unit.rent <= 0 || calculation.plantValue <= 0) {
+      if (unit.rent <= 0) {
         return {
           key: "incomplete",
           label: "Dati insufficienti",
           title: "Completare il calcolo impiantistico",
-          text: "Servono la rendita in atti e almeno un impianto con costo, anno, vita utile e quota riferibile alla UIU.",
+          text: "Serve la rendita in atti per costruire il valore catastale ante operam e confrontarlo con le dotazioni aggiunte.",
           confidence: "Non calcolabile",
           method: "Confronto economico 21/E/2026",
-          actions: ["Inserire la rendita", "Valorizzare gli impianti", "Controllare quote e valori già censiti"],
+          actions: ["Inserire la rendita", "Verificare il classamento ante operam", "Documentare il valore ordinario degli impianti"],
         };
       }
-      if (calculation.meetsThreshold) {
+      if (calculation.excludedRows.length === plants.length && plants.some(({ cost, powerKw, metricValue }) => cost > 0 || powerKw > 0 || metricValue > 0)) {
+        return {
+          key: "ordinary",
+          label: "Esclusione documentata",
+          title: "Nessun valore incrementale nel metodo selezionato",
+          text: "Tutte le dotazioni inserite risultano escluse dal calcolo per una regola fotovoltaica specifica, perché già comprese nella rendita oppure perché configurate come sostituzioni equivalenti.",
+          confidence: "Medio-alta",
+          method: "Gate impiantistici preliminari",
+          actions: ["Conservare i dati tecnici e la fonte", "Verificare che non vi siano opere o dotazioni ulteriori", "Riportare l’esclusione nella relazione"],
+        };
+      }
+      if (calculation.plantValue <= 0) {
+        return {
+          key: "incomplete",
+          label: "Dati insufficienti",
+          title: "Completare la valorizzazione impiantistica",
+          text: "Almeno una dotazione non esclusa deve avere valore ordinario a nuovo, anno, vita utile e quota riferibile alla UIU.",
+          confidence: "Non calcolabile",
+          method: "Confronto economico 21/E/2026",
+          actions: ["Documentare il valore a nuovo", "Indicare la fonte del costo", "Controllare quota e valore preesistente"],
+        };
+      }
+      if (calculation.convergenceStatus === "borderline") {
+        return {
+          key: "inconclusive",
+          label: "Zona di incertezza",
+          title: "I due riferimenti non convergono",
+          text: "L’incidenza supera uno soltanto tra il benchmark operativo del 15% e lo scarto tariffario locale. Il dato numerico non è sufficiente per concludere senza comparazione con unità tipo e classi contigue.",
+          confidence: "Media",
+          method: "21/E + doppio riscontro benchmark/tariffe",
+          actions: ["Verificare le tariffe ufficiali", "Confrontare l’unità tipo", "Motivare espressamente lo scostamento"],
+        };
+      }
+      if (calculation.benchmarkMet && (calculation.localGapMet ?? true)) {
         return {
           key: "review",
-          label: calculation.thresholdSource === "local-tariff" ? "Scarto tariffario raggiunto" : "Benchmark raggiunto",
+          label: calculation.localGap === null ? "Benchmark raggiunto" : "Riferimenti convergenti",
           title: "Riclassamento meritevole di verifica",
-          text: "L’incremento impiantistico stimato raggiunge il riferimento selezionato. Il risultato non assegna da solo una nuova classe: occorre la comparazione catastale locale.",
-          confidence: calculation.thresholdSource === "local-tariff" ? "Medio-alta" : "Media",
-          method: calculation.thresholdSource === "local-tariff" ? "21/E + scarto reale fra classi contigue" : "21/E + benchmark nazionale del 15%",
+          text: "L’incremento impiantistico stimato raggiunge il benchmark e, quando disponibile, anche lo scarto tariffario locale. Il risultato non assegna da solo una nuova classe: occorre la comparazione catastale locale.",
+          confidence: calculation.localGap === null ? "Media" : "Medio-alta",
+          method: calculation.localGap === null ? "21/E + benchmark operativo del 15%" : "21/E + convergenza benchmark/scarto locale",
           actions: ["Confrontare le unità tipo", "Verificare la tariffa della classe successiva", "Motivare l’eventuale DOCFA"],
         };
       }
@@ -225,8 +293,8 @@ export default function Home() {
         label: "Sotto il riferimento",
         title: "Nessun incremento apprezzabile dal solo impianto",
         text: "Il calcolo non raggiunge il benchmark o lo scarto tariffario locale. Restano da escludere mutazioni e disallineamenti non rappresentati dai dati inseriti.",
-        confidence: calculation.thresholdSource === "local-tariff" ? "Medio-alta" : "Media",
-        method: calculation.thresholdSource === "local-tariff" ? "21/E + scarto reale fra classi contigue" : "21/E + benchmark nazionale del 15%",
+        confidence: calculation.localGap === null ? "Media" : "Medio-alta",
+        method: calculation.localGap === null ? "21/E + benchmark operativo del 15%" : "21/E + convergenza benchmark/scarto locale",
         actions: ["Conservare il calcolo", "Documentare gli impianti", "Motivare l’assenza di variazioni ulteriori"],
       };
     }
@@ -261,7 +329,7 @@ export default function Home() {
       method: "Comparazione qualitativa con unità tipo",
       actions: ["Completare i fattori", "Acquisire unità tipo o comparabili", "Verificare le tariffe locali"],
     };
-  }, [analysisPath, calculation, coherence, comparison, evidenceCount, hasObjectiveChanges, unit.rent]);
+  }, [analysisPath, calculation, coherence, comparison, evidenceCount, hasObjectiveChanges, plants, unit.rent]);
 
   function updatePlant(id: number, patch: Partial<Plant>) {
     setPlants((current) => current.map((plant) => plant.id === id ? { ...plant, ...patch } : plant));
@@ -319,7 +387,7 @@ export default function Home() {
           <span><strong>Verifica catastale</strong><small>Strumento tecnico post-interventi</small></span>
         </a>
         <div className="header-actions">
-          <span className="version-pill">Metodo v0.3</span>
+          <span className="version-pill">Metodo v0.4</span>
           <button className="text-button" type="button" onClick={resetCase}>Nuovo caso</button>
           <button className="print-button" type="button" onClick={() => window.print()}>Stampa scheda</button>
         </div>
@@ -407,7 +475,7 @@ export default function Home() {
               <SectionTitle number="M" label="Perimetro metodologico" title="Cosa calcola — e cosa non calcola" />
               <div className="method-grid">
                 <div><span>01</span><strong>Impianti</strong><p>Costo pertinente, quota UIU, deprezzamento infracensuario e ragguaglio al 1988–1989.</p></div>
-                <div><span>02</span><strong>Tariffe locali</strong><p>Se fornite, sostituiscono il benchmark fisso con lo scarto reale tra classi contigue.</p></div>
+                <div><span>02</span><strong>Tariffe locali</strong><p>Se fornite, sono confrontate con il benchmark del 15%: l’app segnala convergenza o zona d’incertezza.</p></div>
                 <div><span>03</span><strong>Opere miste</strong><p>Restano affidate alla comparazione professionale; i costi non generano automaticamente rendita.</p></div>
                 <div><span>04</span><strong>Esito</strong><p>È uno screening motivato. Categoria, classe e rendita definitiva restano oggetto di proposta e controllo.</p></div>
               </div>
@@ -426,9 +494,10 @@ export default function Home() {
                 <div><span>Impianti ragguagliati</span><strong>{euro.format(calculation.plantValue)}</strong></div>
                 <div><span>Valore post stimato</span><strong>{euro.format(calculation.valueAfter)}</strong></div>
                 <div className="primary-value"><span>Incidenza</span><strong>{percent.format(calculation.incidence)}%</strong></div>
-                <div><span>Riferimento</span><strong>{percent.format(calculation.threshold)}%</strong></div>
+                <div><span>Benchmark operativo</span><strong>15,00%</strong></div>
+                {calculation.localGap !== null && <div><span>Scarto tariffario</span><strong>{percent.format(calculation.localGap)}%</strong></div>}
               </div>
-              <div className="threshold"><div className="threshold-track"><span style={{ width: `${Math.min(100, (calculation.incidence / Math.max(calculation.threshold * 2, 1)) * 100)}%` }} /></div><div><span>0%</span><span className="threshold-mark">soglia {percent.format(calculation.threshold)}%</span><span>{percent.format(calculation.threshold * 2)}%</span></div></div>
+              <div className="threshold"><div className="threshold-track"><span style={{ width: `${Math.min(100, (calculation.incidence / 30) * 100)}%` }} /></div><div><span>0%</span><span className="threshold-mark">benchmark 15,00%</span><span>30,00%</span></div></div>
             </>}
             {analysisPath === "comparative" && <div className="comparison-summary"><span><strong>{comparison.superior}</strong> superiori</span><span><strong>{comparison.aligned}</strong> allineati</span><span><strong>{comparison.unknown}</strong> da verificare</span></div>}
             <div className="next-actions"><strong>Passaggi successivi</strong><ol>{result.actions.map((action) => <li key={action}>{action}</li>)}</ol></div>
@@ -453,31 +522,68 @@ function PlantAnalysis({ unit, setUnit, plants, setPlants, updatePlant, calculat
   updatePlant: (id: number, patch: Partial<Plant>) => void;
   calculation: ReturnType<typeof calculateScenario>;
 }) {
+  const groups = [...new Set(plantCatalog.map(({ group }) => group))];
+
   return <div className="analysis-panel">
-    <div className="panel-heading"><div><p>Dotazione attuale</p><h3>Impianti da apprezzare</h3></div><button className="add-button" type="button" onClick={() => setPlants((current) => [...current, newPlant(Math.max(...current.map(({ id }) => id), 0) + 1)])}>+ Aggiungi impianto</button></div>
+    <div className="comparison-callout"><strong>Prima classifica, poi valorizza.</strong><p>La tipologia determina i dati tecnici e gli eventuali gate normativi. I valori unitari delle asseverazioni fiscali non sono trasferiti automaticamente nel calcolo catastale.</p></div>
+    <div className="panel-heading"><div><p>Dotazione attuale</p><h3>Impianti da esaminare</h3></div><button className="add-button" type="button" onClick={() => setPlants((current) => [...current, newPlant(Math.max(...current.map(({ id }) => id), 0) + 1)])}>+ Aggiungi impianto</button></div>
     {plants.map((plant, index) => {
       const row = calculation.rows[index];
+      const plantType = plantTypeFor(plant.typeId);
+      const nature = interventionNatures.find(({ id }) => id === plant.interventionNature) ?? interventionNatures[0];
+      const isPhotovoltaic = plant.typeId === "photovoltaic";
+
+      function changeType(typeId: string) {
+        const nextType = plantTypeFor(typeId);
+        updatePlant(plant.id, {
+          typeId,
+          description: nextType.label,
+          variant: nextType.variants[0],
+          metricValue: 0,
+          powerKw: typeId === "photovoltaic" ? plant.powerKw : 0,
+          groundMounted: false,
+          groundVolume: 0,
+        });
+      }
+
       return <div className="plant-card" key={plant.id}>
-        <div className="plant-card-heading"><span>Impianto {String(index + 1).padStart(2, "0")}</span>{plants.length > 1 && <button type="button" onClick={() => setPlants((current) => current.filter(({ id }) => id !== plant.id))}>Rimuovi</button>}</div>
+        <div className="plant-card-heading"><span>Impianto {String(index + 1).padStart(2, "0")}</span><span className={`treatment-badge treatment-${plantType.treatment}`}>{plantType.treatmentLabel}</span>{plants.length > 1 && <button type="button" onClick={() => setPlants((current) => current.filter(({ id }) => id !== plant.id))}>Rimuovi</button>}</div>
+        <div className="plant-classification">
+          <label>Categoria impianto<select value={plant.typeId} onChange={(event) => changeType(event.target.value)}>{groups.map((group) => <optgroup label={group} key={group}>{plantCatalog.filter((item) => item.group === group).map((item) => <option value={item.id} key={item.id}>{item.label}</option>)}</optgroup>)}</select></label>
+          <label>Natura dell’intervento<select value={plant.interventionNature} onChange={(event) => updatePlant(plant.id, { interventionNature: event.target.value })}>{interventionNatures.map(({ id, label }) => <option value={id} key={id}>{label}</option>)}</select></label>
+          <label>Tipologia tecnica<select value={plant.variant} onChange={(event) => updatePlant(plant.id, { variant: event.target.value })}>{plantType.variants.map((variant) => <option key={variant}>{variant}</option>)}</select></label>
+        </div>
+        <div className="criteria-note"><strong>{nature.note}</strong><span>{plantType.note}</span></div>
         <div className="field-grid plant-fields">
           <label className="description">Descrizione<input value={plant.description} onChange={(event) => updatePlant(plant.id, { description: event.target.value })} /></label>
+          <label>{plantType.metricLabel}<input type="number" min="0" step="0.01" value={(isPhotovoltaic ? plant.powerKw : plant.metricValue) || ""} onChange={(event) => updatePlant(plant.id, isPhotovoltaic ? { powerKw: Number(event.target.value) } : { metricValue: Number(event.target.value) })} /></label>
           <label>Anno<select value={plant.year} onChange={(event) => updatePlant(plant.id, { year: Number(event.target.value) })}>{Object.keys(coefficients).reverse().map((year) => <option key={year}>{year}</option>)}</select></label>
-          <label>Costo pertinente (€)<input type="number" min="0" value={plant.cost || ""} onChange={(event) => updatePlant(plant.id, { cost: Number(event.target.value) })} /></label>
+          <label>Valore ordinario a nuovo (€)<input type="number" min="0" value={plant.cost || ""} onChange={(event) => updatePlant(plant.id, { cost: Number(event.target.value) })} /></label>
+          {plant.interventionNature === "improving_replacement" && <label>Valore dotazione equivalente (€)<input type="number" min="0" value={plant.baselineCost || ""} onChange={(event) => updatePlant(plant.id, { baselineCost: Number(event.target.value) })} /></label>}
           <label>Vita utile (anni)<input type="number" min="1" value={plant.usefulLife} onChange={(event) => updatePlant(plant.id, { usefulLife: Number(event.target.value) })} /></label>
           <label>Residuo finale (%)<input type="number" min="0" max="100" value={plant.residual} onChange={(event) => updatePlant(plant.id, { residual: Number(event.target.value) })} /></label>
           <label>Quota UIU (%)<input type="number" min="0" max="100" value={plant.share} onChange={(event) => updatePlant(plant.id, { share: Number(event.target.value) })} /></label>
+          <label className="description">Fonte del valore<input value={plant.costSource} onChange={(event) => updatePlant(plant.id, { costSource: event.target.value })} placeholder="Preventivo depurato, listino, computo…" /></label>
         </div>
+        {isPhotovoltaic && <div className="pv-gate">
+          <div><p className="mini-label">Gate Circolare 36/E/2013</p><h4>Verifica della modesta entità</h4></div>
+          <label>UIU servite<input type="number" min="1" value={plant.servedUnits} onChange={(event) => updatePlant(plant.id, { servedUnits: Math.max(1, Number(event.target.value)) })} /></label>
+          <label className="toggle-line"><input type="checkbox" checked={plant.shared} onChange={(event) => updatePlant(plant.id, { shared: event.target.checked })} />Impianto su parti comuni</label>
+          <label className="toggle-line"><input type="checkbox" checked={plant.groundMounted} onChange={(event) => updatePlant(plant.id, { groundMounted: event.target.checked, variant: event.target.checked ? "A terra" : plant.variant })} />Installazione a terra</label>
+          {plant.groundMounted && <label>Volume convenzionale (m³)<input type="number" min="0" value={plant.groundVolume || ""} onChange={(event) => updatePlant(plant.id, { groundVolume: Number(event.target.value) })} /></label>}
+        </div>}
         <label className="included-check"><input type="checkbox" checked={plant.alreadyIncluded} onChange={(event) => updatePlant(plant.id, { alreadyIncluded: event.target.checked })} />Valore già considerato nella rendita in atti</label>
-        <div className="plant-metrics"><span><small>Quota costo</small><strong>{euro.format(row?.allocatedCost ?? 0)}</strong></span><span><small>Deprezzamento</small><strong>{percent.format((row?.depreciation ?? 0) * 100)}%</strong></span><span><small>Valore 1988–89</small><strong>{euro.format(row?.adjustedValue ?? 0)}</strong></span></div>
+        {row?.exclusionReason && <div className="exclusion-note"><strong>Escluso dal calcolo</strong><span>{row.exclusionReason}</span>{row.exclusion?.source && <small>{row.exclusion.source}</small>}</div>}
+        <div className="plant-metrics"><span><small>Valore apprezzabile</small><strong>{euro.format(row?.assessableCost ?? 0)}</strong></span><span><small>Quota UIU</small><strong>{euro.format(row?.allocatedCost ?? 0)}</strong></span><span><small>Fattore infracensuario</small><strong>{percent.format((row?.depreciation ?? 0) * 100)}%</strong></span><span><small>Valore 1988–89</small><strong>{euro.format(row?.adjustedValue ?? 0)}</strong></span></div>
       </div>;
     })}
     <div className="tariff-panel">
-      <div><p className="mini-label">Confronto opzionale</p><h3>Scarto tariffario locale</h3><p>Inserisci le tariffe della stessa categoria e zona censuaria. Se i dati non sono disponibili, resta attivo il benchmark del 15%.</p></div>
+      <div><p className="mini-label">Doppio riscontro</p><h3>Scarto tariffario locale</h3><p>Inserisci le tariffe ufficiali della stessa categoria e zona censuaria. Lo scarto non sostituisce il 15%: i due riferimenti sono mostrati insieme e un eventuale disaccordo genera una zona d’incertezza.</p></div>
       <div className="field-grid two">
         <label>Tariffa classe attuale<input type="number" min="0" step="0.01" value={unit.currentTariff || ""} onChange={(event) => setUnit({ ...unit, currentTariff: Number(event.target.value) })} /></label>
         <label>Tariffa classe successiva<input type="number" min="0" step="0.01" value={unit.nextTariff || ""} onChange={(event) => setUnit({ ...unit, nextTariff: Number(event.target.value) })} /></label>
       </div>
-      <div className="tariff-result"><span>Riferimento applicato</span><strong>{calculation.thresholdSource === "local-tariff" ? `${percent.format(calculation.threshold)}% — scarto locale` : "15,00% — benchmark"}</strong></div>
+      <div className="tariff-result"><span>Riscontro disponibile</span><strong>{calculation.localGap === null ? "15,00% — solo benchmark operativo" : `${percent.format(calculation.localGap)}% locale + 15,00% benchmark`}</strong></div>
     </div>
   </div>;
 }
