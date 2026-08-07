@@ -44,7 +44,21 @@ incidenza = somma_valori_impianti_1988_89 / valore_ante
 
 Il confronto usa `≥ 15%`, coerentemente con l’espressione “pari o superiore” contenuta nella Risoluzione 21/E/2026. Il risultato identifica una fattispecie meritevole di rideterminazione del classamento, non determina autonomamente categoria, classe o rendita definitiva.
 
-## 5. Stati restituiti
+## 5. Confronto con lo scarto tariffario locale
+
+Quando sono disponibili le tariffe della classe in atti e di quella immediatamente successiva, il benchmark fisso del 15% viene sostituito dallo scarto effettivo:
+
+```text
+scarto_locale = (tariffa_successiva - tariffa_attuale) / tariffa_attuale × 100
+```
+
+Il dato è un riferimento quantitativo territoriale; non sostituisce la comparazione con le unità tipo.
+
+## 6. Opere miste e comparazione qualitativa
+
+Per cappotto, infissi, distribuzione, finiture e interventi complessi l’app non somma automaticamente i costi. Il tecnico qualifica ciascun fattore come invariato, allineato all’ordinarietà, superiore all’unità tipo oppure non verificato. La presenza di un fattore superiore genera una richiesta di approfondimento, non un salto automatico di classe.
+
+## 7. Stati restituiti
 
 - **Aggiornamento necessario** — mutazione oggettiva dichiarata.
 - **Verifica economica positiva** — soli impianti e incidenza pari o superiore al 15%.
@@ -53,3 +67,5 @@ Il confronto usa `≥ 15%`, coerentemente con l’espressione “pari o superior
 - **Controllo preliminare** — classamento ante operam non verificato.
 - **Dati incompleti** — rendita o valori impiantistici mancanti.
 - **Stima specifica richiesta** — categoria speciale o particolare fuori dal perimetro dell’MVP.
+- **Ordinarietà dinamica** — fattori invariati o ricondotti allo standard ordinario, con necessità di riscontro locale.
+- **Scostamento comparativo** — almeno un fattore dichiarato superiore all’unità tipo, da documentare.

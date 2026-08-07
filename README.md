@@ -13,6 +13,10 @@ Il progetto nasce dall’analisi del foglio **“Verifica necessità Accatastame
 - ragguaglia il valore degli impianti all’epoca censuaria 1988–1989;
 - ripartisce impianti comuni per quota riferibile alla singola UIU;
 - esclude gli impianti già considerati nella rendita in atti;
+- separa tre livelli: mutazioni oggettive, mero ampliamento impiantistico e comparazione qualitativa;
+- permette di sostituire il benchmark del 15% con lo scarto reale fra tariffe di classi contigue;
+- organizza il confronto con unità tipo e immobili comparabili senza trasformarlo in un punteggio arbitrario;
+- dichiara per ogni esito metodo applicato, attendibilità, limiti e passaggi successivi;
 - restituisce un esito graduato e motivato, non un automatismo privo di contesto;
 - salva i dati soltanto nel browser e produce una scheda stampabile.
 
@@ -50,6 +54,6 @@ I dati inseriti restano nel `localStorage` del browser: il progetto non include 
 
 ## Stato del progetto
 
-Versione 0.1, destinata a verifica tecnica. La tabella annuale dei coefficienti deriva dal foglio 2026 del Collegio di Trento: la fonte statistica primaria e il processo di aggiornamento devono essere formalizzati prima della pubblicazione generalizzata.
+Versione 0.2, destinata a verifica tecnica. La tabella annuale dei coefficienti deriva dal foglio 2026 del Collegio di Trento: la fonte statistica primaria e il processo di aggiornamento devono essere formalizzati prima della pubblicazione generalizzata.
 
 Il software è uno strumento di supporto e non sostituisce il giudizio del professionista, la simulazione DOCFA o il confronto con le unità tipo e il quadro tariffario della zona censuaria.

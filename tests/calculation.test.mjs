@@ -4,7 +4,9 @@ import {
   calculatePlant,
   calculateScenario,
   depreciationFactor,
+  evaluateComparison,
   multiplierFor,
+  tariffGap,
 } from "../lib/cadastral.mjs";
 
 const basePlant = {
@@ -48,4 +50,25 @@ test("calculates incidence against the category value before works", () => {
   assert.equal(result.valueBefore, 80_000);
   assert.equal(result.plantValue, 30_630);
   assert.equal(Number(result.incidence.toFixed(4)), 38.2875);
+  assert.equal(result.threshold, 15);
+  assert.equal(result.meetsThreshold, true);
+});
+
+test("uses the actual gap between contiguous local tariffs when supplied", () => {
+  assert.equal(Number(tariffGap(72.3, 85.22).toFixed(2)), 17.87);
+  const result = calculateScenario({
+    category: "A/2",
+    rent: 800,
+    plants: [basePlant],
+    currentTariff: 72.3,
+    nextTariff: 85.22,
+  });
+  assert.equal(result.thresholdSource, "local-tariff");
+  assert.equal(Number(result.threshold.toFixed(2)), 17.87);
+});
+
+test("keeps qualitative comparison non-numeric", () => {
+  assert.equal(evaluateComparison({ envelope: "aligned", plants: "unchanged" }).status, "ordinary");
+  assert.equal(evaluateComparison({ envelope: "superior", plants: "aligned" }).status, "review");
+  assert.equal(evaluateComparison({ envelope: "unknown", plants: "aligned" }).status, "inconclusive");
 });
