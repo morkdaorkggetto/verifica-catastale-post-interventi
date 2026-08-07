@@ -19,6 +19,7 @@ Il progetto nasce dall’analisi del foglio **“Verifica necessità Accatastame
 - dichiara per ogni esito metodo applicato, attendibilità, limiti e passaggi successivi;
 - restituisce un esito graduato e motivato, non un automatismo privo di contesto;
 - salva i dati soltanto nel browser e produce una scheda stampabile.
+- genera una relazione tecnica dinamica in Markdown o RTF, con segnaposto limitati ai dati mancanti.
 
 ## Avvio locale
 
@@ -47,6 +48,7 @@ I dati inseriti restano nel `localStorage` del browser: il progetto non include 
 
 - `app/` — interfaccia e stili;
 - `lib/cadastral.mjs` — motore di calcolo indipendente dall’interfaccia;
+- `lib/report.mjs` — generatore delle relazioni Markdown e RTF;
 - `tests/calculation.test.mjs` — casi numerici e controlli sui moltiplicatori;
 - `docs/decision-model.md` — albero decisionale e significato degli esiti;
 - `docs/sources.md` — fonti normative e punti ancora da validare;
@@ -54,6 +56,6 @@ I dati inseriti restano nel `localStorage` del browser: il progetto non include 
 
 ## Stato del progetto
 
-Versione 0.2, destinata a verifica tecnica. La tabella annuale dei coefficienti deriva dal foglio 2026 del Collegio di Trento: la fonte statistica primaria e il processo di aggiornamento devono essere formalizzati prima della pubblicazione generalizzata.
+Versione 0.3, destinata a verifica tecnica. La tabella annuale dei coefficienti deriva dal foglio 2026 del Collegio di Trento: la fonte statistica primaria e il processo di aggiornamento devono essere formalizzati prima della pubblicazione generalizzata.
 
 Il software è uno strumento di supporto e non sostituisce il giudizio del professionista, la simulazione DOCFA o il confronto con le unità tipo e il quadro tariffario della zona censuaria.

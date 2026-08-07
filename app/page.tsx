@@ -6,6 +6,7 @@ import {
   coefficients,
   evaluateComparison,
 } from "../lib/cadastral.mjs";
+import { buildMarkdownReport, buildRtfReport, reportFileName } from "../lib/report.mjs";
 
 type ChangeKey = "destination" | "consistency" | "distribution" | "shape";
 type AnalysisPath = "plants" | "comparative";
@@ -84,6 +85,13 @@ const defaultFactors: Record<FactorKey, FactorValue> = {
 };
 
 const defaultEvidence = { unitType: false, comparables: false, tariffTable: false };
+const defaultTechnician = {
+  name: "",
+  qualification: "",
+  register: "",
+  registrationNumber: "",
+  office: "",
+};
 
 const newPlant = (id = 1): Plant => ({
   id,
@@ -108,6 +116,7 @@ export default function Home() {
   const [plants, setPlants] = useState<Plant[]>([newPlant()]);
   const [factors, setFactors] = useState(defaultFactors);
   const [evidence, setEvidence] = useState(defaultEvidence);
+  const [technician, setTechnician] = useState(defaultTechnician);
   const [notes, setNotes] = useState("");
   const [hydrated, setHydrated] = useState(false);
 
@@ -124,6 +133,7 @@ export default function Home() {
           if (Array.isArray(parsed.plants) && parsed.plants.length) setPlants(parsed.plants);
           if (parsed.factors) setFactors({ ...defaultFactors, ...parsed.factors });
           if (parsed.evidence) setEvidence({ ...defaultEvidence, ...parsed.evidence });
+          if (parsed.technician) setTechnician({ ...defaultTechnician, ...parsed.technician });
           if (parsed.notes) setNotes(parsed.notes);
         }
       } catch {
@@ -137,8 +147,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ unit, coherence, changes, analysisPath, plants, factors, evidence, notes }));
-  }, [hydrated, unit, coherence, changes, analysisPath, plants, factors, evidence, notes]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ unit, coherence, changes, analysisPath, plants, factors, evidence, technician, notes }));
+  }, [hydrated, unit, coherence, changes, analysisPath, plants, factors, evidence, technician, notes]);
 
   const calculation = useMemo(() => calculateScenario({
     category: unit.category,
@@ -266,8 +276,39 @@ export default function Home() {
     setPlants([newPlant()]);
     setFactors(defaultFactors);
     setEvidence(defaultEvidence);
+    setTechnician(defaultTechnician);
     setNotes("");
     localStorage.removeItem(STORAGE_KEY);
+  }
+
+  function exportReport(format: "md" | "rtf") {
+    const reportData = {
+      generatedAt: new Intl.DateTimeFormat("it-IT", { dateStyle: "long" }).format(new Date()),
+      technician,
+      unit,
+      coherence,
+      changes: selectedChanges.map(({ title }) => title),
+      analysisPath,
+      plants,
+      calculation,
+      factors: factorDefinitions.map(({ key, title }) => ({
+        title,
+        label: factorOptions.find(({ value }) => value === factors[key])?.label ?? "Da verificare",
+      })),
+      evidence,
+      notes,
+      result,
+    };
+    const content = format === "md" ? buildMarkdownReport(reportData) : buildRtfReport(reportData);
+    const blob = new Blob([content], { type: format === "md" ? "text/markdown;charset=utf-8" : "application/rtf;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = reportFileName(unit.caseName, format);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -278,7 +319,7 @@ export default function Home() {
           <span><strong>Verifica catastale</strong><small>Strumento tecnico post-interventi</small></span>
         </a>
         <div className="header-actions">
-          <span className="version-pill">Metodo v0.2</span>
+          <span className="version-pill">Metodo v0.3</span>
           <button className="text-button" type="button" onClick={resetCase}>Nuovo caso</button>
           <button className="print-button" type="button" onClick={() => window.print()}>Stampa scheda</button>
         </div>
@@ -346,8 +387,20 @@ export default function Home() {
             </section>
 
             <section className="form-section notes-section">
-              <SectionTitle number="04" label="Tracciabilità" title="Annotazioni e riscontri del tecnico" />
-              <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Indicare documenti consultati, unità comparabili, assunzioni estimative e cautele residue…" />
+              <SectionTitle number="04" label="Relazione esportabile" title="Completa i dati del tecnico" />
+              <p className="section-intro">I campi sono facoltativi nell’app. Nel documento scaricato, ogni dato mancante sarà sostituito da un segnaposto chiaramente riconoscibile.</p>
+              <div className="field-grid technician-grid">
+                <label className="wide">Nome e cognome<input value={technician.name} onChange={(event) => setTechnician({ ...technician, name: event.target.value })} placeholder="Lascia vuoto per generare il segnaposto" /></label>
+                <label>Qualifica<input value={technician.qualification} onChange={(event) => setTechnician({ ...technician, qualification: event.target.value })} placeholder="Es. Architetto" /></label>
+                <label>Ordine o Collegio<input value={technician.register} onChange={(event) => setTechnician({ ...technician, register: event.target.value })} /></label>
+                <label>Numero iscrizione<input value={technician.registrationNumber} onChange={(event) => setTechnician({ ...technician, registrationNumber: event.target.value })} /></label>
+                <label className="wide">Studio o recapito<input value={technician.office} onChange={(event) => setTechnician({ ...technician, office: event.target.value })} /></label>
+              </div>
+              <label className="notes-label">Annotazioni e riscontri<textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Documenti consultati, unità comparabili, assunzioni estimative e cautele residue…" /></label>
+              <div className="export-panel">
+                <div><p className="mini-label">Documento dinamico</p><strong>Relazione costruita sul metodo applicato</strong><small>Il testo include calcoli o comparazione qualitativa, esito, attendibilità, passaggi successivi e avvertenze.</small></div>
+                <div className="export-actions"><button type="button" onClick={() => exportReport("md")}>Scarica .md</button><button type="button" onClick={() => exportReport("rtf")}>Scarica .rtf</button></div>
+              </div>
             </section>
 
             <section className="method-section">

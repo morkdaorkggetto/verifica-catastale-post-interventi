@@ -119,7 +119,16 @@ body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opa
 .evidence-grid label { position: relative; padding: 13px 11px; border: 1px solid var(--line); background: white; cursor: pointer; font-size: 11px; text-align: center; }
 .evidence-grid label.checked { border-color: var(--sage); background: var(--sage-light); font-weight: 700; }
 .evidence-status { margin: 15px 0 0; color: var(--muted); font-size: 11px; }
-.notes-section textarea { width: 100%; min-height: 130px; resize: vertical; padding: 14px; border: 1px solid var(--line); background: white; color: var(--ink); line-height: 1.55; }
+.technician-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.notes-label { display: block; margin-top: 24px; color: var(--muted); font-size: 11px; font-weight: 650; }
+.notes-section textarea { width: 100%; min-height: 130px; margin-top: 7px; resize: vertical; padding: 14px; border: 1px solid var(--line); background: white; color: var(--ink); line-height: 1.55; }
+.export-panel { margin-top: 22px; padding: 20px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border: 1px solid var(--ink); background: var(--sage-light); }
+.export-panel strong, .export-panel small { display: block; }
+.export-panel strong { font-family: Georgia, serif; font-size: 19px; font-weight: 500; }
+.export-panel small { max-width: 620px; margin-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.export-actions { display: flex; flex: 0 0 auto; gap: 8px; }
+.export-actions button { padding: 10px 13px; border: 1px solid var(--ink); background: white; color: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
+.export-actions button:last-child { background: var(--ink); color: white; }
 
 .method-section { background: var(--ink); color: white; }
 .method-section .section-heading > span { border-color: white; }
@@ -192,7 +201,7 @@ footer { max-width: 1500px; margin: 0 auto; padding: 23px 4vw 34px; display: fle
   .print-button { padding: 9px 10px; font-size: 11px; }
   .hero h1 { font-size: 42px; }
   .form-section, .method-section { padding: 21px 16px; }
-  .field-grid.four, .field-grid.two, .check-grid, .method-choice-grid, .plant-fields, .plant-metrics, .method-grid, .evidence-grid { grid-template-columns: 1fr; }
+  .field-grid.four, .field-grid.two, .technician-grid, .check-grid, .method-choice-grid, .plant-fields, .plant-metrics, .method-grid, .evidence-grid { grid-template-columns: 1fr; }
   .field-grid .wide, .field-grid .rent-field, .plant-fields .description { grid-column: auto; }
   .segmented { width: 100%; }
   .segmented label { min-width: 0; padding-inline: 7px; }
@@ -200,6 +209,9 @@ footer { max-width: 1500px; margin: 0 auto; padding: 23px 4vw 34px; display: fle
   .plant-metrics span + span, .method-grid > div { border-left: 0; border-top: 1px solid var(--line); }
   .method-grid > div { border-right: 0 !important; border-bottom: 0 !important; }
   .result-meta { grid-template-columns: 1fr; }
+  .export-panel { align-items: stretch; flex-direction: column; }
+  .export-actions { width: 100%; }
+  .export-actions button { flex: 1; }
   footer { padding-inline: 20px; flex-direction: column; gap: 8px; }
 }
 

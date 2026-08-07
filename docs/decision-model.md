@@ -69,3 +69,13 @@ Per cappotto, infissi, distribuzione, finiture e interventi complessi l’app no
 - **Stima specifica richiesta** — categoria speciale o particolare fuori dal perimetro dell’MVP.
 - **Ordinarietà dinamica** — fattori invariati o ricondotti allo standard ordinario, con necessità di riscontro locale.
 - **Scostamento comparativo** — almeno un fattore dichiarato superiore all’unità tipo, da documentare.
+
+## 8. Relazione esportabile
+
+L’app genera due versioni della relazione, Markdown e RTF. La struttura del testo dipende dal metodo effettivamente applicato:
+
+- per il mero ampliamento impiantistico espone impianti, ragguaglio, valore ante e post, incidenza e riferimento utilizzato;
+- per le opere miste espone i fattori comparativi e la base documentale disponibile;
+- per le mutazioni oggettive motiva la prevalenza del gate dichiarativo sul calcolo economico.
+
+I valori compilati sono riportati nel documento. I soli dati mancanti vengono sostituiti da segnaposto nel formato `[[DA INSERIRE: ...]]`, così da rendere riconoscibili le integrazioni ancora necessarie prima della firma.
