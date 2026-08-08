@@ -10,6 +10,7 @@ import { interventionNatures, plantCatalog, plantTypeFor } from "../lib/plants.m
 import { buildMarkdownReport, buildRtfReport, reportFileName } from "../lib/report.mjs";
 
 type ChangeKey = "destination" | "consistency" | "distribution" | "shape";
+type WorkKey = "envelope" | "windows" | "structural" | "finishes" | "accessibility" | "otherBuilding";
 type AnalysisPath = "plants" | "comparative";
 type Coherence = "yes" | "no" | "unknown";
 type FactorValue = "unchanged" | "aligned" | "superior" | "unknown";
@@ -31,6 +32,10 @@ type Plant = {
   cost: number;
   baselineCost: number;
   costSource: string;
+  costBasis: string;
+  applyReproductionUplift: boolean;
+  upliftFactor: number;
+  upliftSource: string;
   usefulLife: number;
   residual: number;
   share: number;
@@ -52,6 +57,7 @@ const defaultUnit = {
   sub: "",
   category: "A/2",
   cadastralClass: "",
+  classReference: "unknown",
   rent: 0,
   currentTariff: 0,
   nextTariff: 0,
@@ -62,6 +68,15 @@ const changeDefinitions: Array<{ key: ChangeKey; title: string; note: string }> 
   { key: "consistency", title: "Consistenza", note: "Vani, superficie, volume, ampliamento, fusione o frazionamento." },
   { key: "distribution", title: "Distribuzione rilevante", note: "Assetto interno o servizi tali da richiedere il riesame censuario." },
   { key: "shape", title: "Sagoma o configurazione", note: "Trasformazioni geometriche o planimetriche non rappresentate in atti." },
+];
+
+const workDefinitions: Array<{ key: WorkKey; title: string; note: string }> = [
+  { key: "envelope", title: "Involucro", note: "Cappotto, copertura, isolamento o altre opere sull’involucro." },
+  { key: "windows", title: "Serramenti", note: "Sostituzione o modifica significativa di infissi e schermature." },
+  { key: "structural", title: "Opere strutturali", note: "Consolidamenti, adeguamenti o trasformazioni strutturali." },
+  { key: "finishes", title: "Finiture e servizi", note: "Migliorie edilizie, servizi, materiali o dotazioni non meramente impiantistiche." },
+  { key: "accessibility", title: "Accessibilità", note: "Ascensori, piattaforme, rampe o modifiche funzionali rilevanti." },
+  { key: "otherBuilding", title: "Altre opere edilizie", note: "Qualunque intervento non descrivibile come solo ampliamento impiantistico." },
 ];
 
 const factorDefinitions: Array<{ key: FactorKey; title: string; note: string }> = [
@@ -85,6 +100,15 @@ const defaultChanges: Record<ChangeKey, boolean> = {
   consistency: false,
   distribution: false,
   shape: false,
+};
+
+const defaultWorks: Record<WorkKey, boolean> = {
+  envelope: false,
+  windows: false,
+  structural: false,
+  finishes: false,
+  accessibility: false,
+  otherBuilding: false,
 };
 
 const defaultFactors: Record<FactorKey, FactorValue> = {
@@ -121,6 +145,10 @@ const newPlant = (id = 1): Plant => ({
   cost: 0,
   baselineCost: 0,
   costSource: "",
+  costBasis: "",
+  applyReproductionUplift: false,
+  upliftFactor: 1.37,
+  upliftSource: "",
   usefulLife: 20,
   residual: 0,
   share: 100,
@@ -147,7 +175,10 @@ export default function Home() {
   const [unit, setUnit] = useState(defaultUnit);
   const [coherence, setCoherence] = useState<Coherence>("unknown");
   const [changes, setChanges] = useState(defaultChanges);
+  const [works, setWorks] = useState(defaultWorks);
+  const [inventoryConfirmed, setInventoryConfirmed] = useState(false);
   const [analysisPath, setAnalysisPath] = useState<AnalysisPath>("plants");
+  const [overrideReason, setOverrideReason] = useState("");
   const [plants, setPlants] = useState<Plant[]>([newPlant()]);
   const [factors, setFactors] = useState(defaultFactors);
   const [evidence, setEvidence] = useState(defaultEvidence);
@@ -164,7 +195,10 @@ export default function Home() {
           if (parsed.unit) setUnit({ ...defaultUnit, ...parsed.unit });
           if (parsed.coherence) setCoherence(parsed.coherence);
           if (parsed.changes) setChanges({ ...defaultChanges, ...parsed.changes });
+          if (parsed.works) setWorks({ ...defaultWorks, ...parsed.works });
+          if (parsed.inventoryConfirmed) setInventoryConfirmed(true);
           if (parsed.analysisPath) setAnalysisPath(parsed.analysisPath);
+          if (parsed.overrideReason) setOverrideReason(parsed.overrideReason);
           if (Array.isArray(parsed.plants) && parsed.plants.length) setPlants(parsed.plants.map(normalizePlant));
           if (parsed.factors) setFactors({ ...defaultFactors, ...parsed.factors });
           if (parsed.evidence) setEvidence({ ...defaultEvidence, ...parsed.evidence });
@@ -182,8 +216,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ unit, coherence, changes, analysisPath, plants, factors, evidence, technician, notes }));
-  }, [hydrated, unit, coherence, changes, analysisPath, plants, factors, evidence, technician, notes]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ unit, coherence, changes, works, inventoryConfirmed, analysisPath, overrideReason, plants, factors, evidence, technician, notes }));
+  }, [hydrated, unit, coherence, changes, works, inventoryConfirmed, analysisPath, overrideReason, plants, factors, evidence, technician, notes]);
 
   const calculation = useMemo(() => calculateScenario({
     category: unit.category,
@@ -195,7 +229,12 @@ export default function Home() {
 
   const comparison = useMemo(() => evaluateComparison(factors), [factors]);
   const selectedChanges = changeDefinitions.filter(({ key }) => changes[key]);
+  const selectedWorks = workDefinitions.filter(({ key }) => works[key]);
   const hasObjectiveChanges = selectedChanges.length > 0;
+  const hasMixedWorks = selectedWorks.length > 0;
+  const recommendedPath: AnalysisPath = hasMixedWorks ? "comparative" : "plants";
+  const isMethodOverride = analysisPath !== recommendedPath;
+  const unresolvedOverride = isMethodOverride && !overrideReason.trim();
   const evidenceCount = Object.values(evidence).filter(Boolean).length;
 
   const result = useMemo(() => {
@@ -221,7 +260,15 @@ export default function Home() {
         actions: ["Ricostruire lo stato ante operam", "Controllare categoria, classe e consistenza", "Acquisire planimetria e visura storica"],
       };
     }
-    if (calculation.multiplier === null) {
+    if (calculation.categoryKind === "invalid") {
+      return {
+        key: "incomplete", label: "Input non valido", title: "Categoria catastale non riconosciuta",
+        text: "Il calcolo è bloccato: selezionare una categoria ordinaria valida oppure il percorso dedicato alle categorie speciali.",
+        confidence: "Non calcolabile", method: "Validazione bloccante degli input",
+        actions: ["Correggere la categoria", "Non applicare moltiplicatori predefiniti a categorie non riconosciute"],
+      };
+    }
+    if (calculation.categoryKind === "special") {
       return {
         key: "inconclusive",
         label: "Fuori perimetro",
@@ -232,7 +279,47 @@ export default function Home() {
         actions: ["Applicare la metodologia pertinente", "Documentare costi e deprezzamenti", "Non usare il benchmark ordinario del 15%"],
       };
     }
+    if (!inventoryConfirmed) {
+      return {
+        key: "incomplete", label: "Inventario da confermare", title: "Confermare il perimetro dei lavori",
+        text: "L’assenza di opere selezionate non equivale ancora alla dichiarazione che l’intervento sia meramente impiantistico.",
+        confidence: "Non calcolabile", method: "Inventario obbligatorio degli interventi",
+        actions: ["Verificare tutte le categorie di opere", "Confermare che l’inventario descrive l’intero intervento"],
+      };
+    }
+    if (unresolvedOverride) {
+      return {
+        key: "incomplete", label: "Deroga non motivata", title: "Motivare la scelta del metodo",
+        text: `L’inventario indirizza al percorso ${recommendedPath === "plants" ? "impiantistico" : "comparativo"}, ma è stato selezionato un metodo diverso. La deroga professionale è ammessa solo se motivata e tracciata.`,
+        confidence: "Non calcolabile", method: "Instradamento guidato con deroga motivata",
+        actions: ["Inserire la motivazione della deroga", "Oppure ripristinare il metodo raccomandato"],
+      };
+    }
     if (analysisPath === "plants") {
+      if (calculation.status === "invalid") {
+        return {
+          key: "incomplete", label: "Input non validi", title: "Correggere i dati prima del calcolo",
+          text: calculation.issues.filter(({ severity }) => severity === "invalid").map(({ message }) => message).join(" "),
+          confidence: "Non calcolabile", method: "Validazione bloccante valid / warning / invalid",
+          actions: ["Correggere i campi segnalati", "Verificare anno, costi, quote e parametri infracensuari"],
+        };
+      }
+      if (calculation.status === "warning") {
+        return {
+          key: "inconclusive", label: "Dato da validare", title: "Calcolo provvisorio non conclusivo",
+          text: calculation.issues.filter(({ severity }) => severity === "warning").map(({ message }) => message).join(" "),
+          confidence: "Bassa", method: "Calcolo economico con riserve esplicite",
+          actions: ["Rimuovere o motivare le avvertenze", "Confermare la base economica e le fonti", "Usare il valore solo come riscontro provvisorio"],
+        };
+      }
+      if (unit.classReference === "top") {
+        return {
+          key: "inconclusive", label: "Classe apicale", title: "Occorrono riferimenti censuari esterni alla zona",
+          text: "La UIU è già all’ultima classe disponibile nella zona censuaria. Il benchmark economico resta un riscontro, ma non consente un esito conclusivo senza unità tipo o classi di un’altra zona dello stesso Comune o di un Comune analogo della provincia.",
+          confidence: "Bassa", method: "Gate della classe apicale — Risoluzione 21/E/2026",
+          actions: ["Reperire riferimenti in altra zona censuaria", "Confrontare un Comune analogo della provincia", "Documentare la scelta dei comparabili"],
+        };
+      }
       if (unit.rent <= 0) {
         return {
           key: "incomplete",
@@ -329,7 +416,7 @@ export default function Home() {
       method: "Comparazione qualitativa con unità tipo",
       actions: ["Completare i fattori", "Acquisire unità tipo o comparabili", "Verificare le tariffe locali"],
     };
-  }, [analysisPath, calculation, coherence, comparison, evidenceCount, hasObjectiveChanges, plants, unit.rent]);
+  }, [analysisPath, calculation, coherence, comparison, evidenceCount, hasObjectiveChanges, inventoryConfirmed, plants, recommendedPath, unresolvedOverride, unit.classReference, unit.rent]);
 
   function updatePlant(id: number, patch: Partial<Plant>) {
     setPlants((current) => current.map((plant) => plant.id === id ? { ...plant, ...patch } : plant));
@@ -340,7 +427,10 @@ export default function Home() {
     setUnit(defaultUnit);
     setCoherence("unknown");
     setChanges(defaultChanges);
+    setWorks(defaultWorks);
+    setInventoryConfirmed(false);
     setAnalysisPath("plants");
+    setOverrideReason("");
     setPlants([newPlant()]);
     setFactors(defaultFactors);
     setEvidence(defaultEvidence);
@@ -356,7 +446,11 @@ export default function Home() {
       unit,
       coherence,
       changes: selectedChanges.map(({ title }) => title),
+      works: selectedWorks.map(({ title }) => title),
+      inventoryConfirmed,
       analysisPath,
+      recommendedPath,
+      overrideReason,
       plants,
       calculation,
       factors: factorDefinitions.map(({ key, title }) => ({
@@ -379,6 +473,8 @@ export default function Home() {
     URL.revokeObjectURL(url);
   }
 
+  const reportBlocked = !inventoryConfirmed || (analysisPath === "plants" && calculation.status === "invalid") || unresolvedOverride;
+
   return (
     <>
       <header className="site-header">
@@ -387,7 +483,7 @@ export default function Home() {
           <span><strong>Verifica catastale</strong><small>Strumento tecnico post-interventi</small></span>
         </a>
         <div className="header-actions">
-          <span className="version-pill">Metodo v0.4</span>
+          <span className="version-pill">Metodo v0.5</span>
           <button className="text-button" type="button" onClick={resetCase}>Nuovo caso</button>
           <button className="print-button" type="button" onClick={() => window.print()}>Stampa scheda</button>
         </div>
@@ -422,6 +518,7 @@ export default function Home() {
                 <label>Subalterno<input value={unit.sub} onChange={(event) => setUnit({ ...unit, sub: event.target.value })} /></label>
                 <label>Categoria<select value={unit.category} onChange={(event) => setUnit({ ...unit, category: event.target.value })}>{categories.map((category) => <option key={category}>{category}</option>)}</select></label>
                 <label>Classe in atti<input value={unit.cadastralClass} onChange={(event) => setUnit({ ...unit, cadastralClass: event.target.value })} /></label>
+                <label>Classe successiva nella zona<select value={unit.classReference} onChange={(event) => setUnit({ ...unit, classReference: event.target.value })}><option value="unknown">Da verificare</option><option value="available">Disponibile</option><option value="top">Classe apicale / non disponibile</option></select></label>
                 <label className="rent-field">Rendita in atti (€)<input type="number" min="0" value={unit.rent || ""} onChange={(event) => setUnit({ ...unit, rent: Number(event.target.value) })} /></label>
               </div>
               <fieldset className="radio-fieldset">
@@ -438,14 +535,27 @@ export default function Home() {
               <div className="check-grid">
                 {changeDefinitions.map(({ key, title, note }) => <label className={`check-card ${changes[key] ? "checked" : ""}`} key={key}><input type="checkbox" checked={changes[key]} onChange={(event) => setChanges({ ...changes, [key]: event.target.checked })} /><span className="check-box">{changes[key] ? "✓" : ""}</span><span><strong>{title}</strong><small>{note}</small></span></label>)}
               </div>
+              <label className="included-check"><input type="checkbox" checked={inventoryConfirmed} onChange={(event) => setInventoryConfirmed(event.target.checked)} />Confermo che l’inventario descrive l’intero intervento, comprese eventuali opere non impiantistiche</label>
             </section>
 
             <section className="form-section" id="analysis">
-              <SectionTitle number="03" label="Scelta del metodo" title="Quale fattispecie devi valutare?" />
+              <SectionTitle number="03" label="Inventario e metodo" title="Quali interventi sono stati eseguiti?" />
+              <p className="section-intro">L’inventario instrada automaticamente il metodo. Se sono presenti opere edilizie o qualitative, il confronto economico dei soli impianti non è il percorso ordinario.</p>
+              <div className="check-grid">
+                {workDefinitions.map(({ key, title, note }) => <label className={`check-card ${works[key] ? "checked" : ""}`} key={key}><input type="checkbox" checked={works[key]} onChange={(event) => {
+                  const nextWorks = { ...works, [key]: event.target.checked };
+                  const nextRecommended = Object.values(nextWorks).some(Boolean) ? "comparative" : "plants";
+                  setWorks(nextWorks);
+                  setAnalysisPath(nextRecommended);
+                  setOverrideReason("");
+                }} /><span className="check-box">{works[key] ? "✓" : ""}</span><span><strong>{title}</strong><small>{note}</small></span></label>)}
+              </div>
+              <div className="comparison-callout"><strong>Metodo raccomandato: {recommendedPath === "plants" ? "solo ampliamento impiantistico" : "comparazione complessiva"}.</strong><p>L’utente può derogare, ma la motivazione viene resa obbligatoria e riportata nella relazione.</p></div>
               <div className="method-choice-grid">
                 <button type="button" className={`method-choice ${analysisPath === "plants" ? "selected" : ""}`} onClick={() => setAnalysisPath("plants")}><span>A</span><strong>Solo ampliamento impiantistico</strong><small>Confronto economico ante/post secondo la Risoluzione 21/E/2026.</small></button>
                 <button type="button" className={`method-choice ${analysisPath === "comparative" ? "selected" : ""}`} onClick={() => setAnalysisPath("comparative")}><span>B</span><strong>Opere miste o miglioramento qualitativo</strong><small>Comparazione con unità tipo e ordinarietà locale, senza automatismi di costo.</small></button>
               </div>
+              {isMethodOverride && <label className="notes-label">Motivazione della deroga al metodo raccomandato<textarea value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} placeholder="Indicare perché il metodo scelto è pertinente nonostante l’inventario degli interventi…" /></label>}
 
               {analysisPath === "plants" ? (
                 <PlantAnalysis unit={unit} setUnit={setUnit} plants={plants} setPlants={setPlants} updatePlant={updatePlant} calculation={calculation} />
@@ -467,7 +577,7 @@ export default function Home() {
               <label className="notes-label">Annotazioni e riscontri<textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Documenti consultati, unità comparabili, assunzioni estimative e cautele residue…" /></label>
               <div className="export-panel">
                 <div><p className="mini-label">Documento dinamico</p><strong>Relazione costruita sul metodo applicato</strong><small>Il testo include calcoli o comparazione qualitativa, esito, attendibilità, passaggi successivi e avvertenze.</small></div>
-                <div className="export-actions"><button type="button" onClick={() => exportReport("md")}>Scarica .md</button><button type="button" onClick={() => exportReport("rtf")}>Scarica .rtf</button></div>
+                <div className="export-actions"><button type="button" disabled={reportBlocked} title={reportBlocked ? "Correggere gli errori bloccanti prima di generare la relazione" : undefined} onClick={() => exportReport("md")}>Scarica .md</button><button type="button" disabled={reportBlocked} title={reportBlocked ? "Correggere gli errori bloccanti prima di generare la relazione" : undefined} onClick={() => exportReport("rtf")}>Scarica .rtf</button></div>
               </div>
             </section>
 
@@ -488,6 +598,7 @@ export default function Home() {
             <h2>{result.title}</h2>
             <p className="result-text">{result.text}</p>
             <div className="result-meta"><span>Metodo applicato<strong>{result.method}</strong></span><span>Attendibilità<strong>{result.confidence}</strong></span></div>
+            {analysisPath === "plants" && calculation.issues.length > 0 && <div className="exclusion-note"><strong>Stato dati: {calculation.status}</strong>{calculation.issues.map(({ code, message }) => <span key={`${code}-${message}`}>{message}</span>)}</div>}
             {analysisPath === "plants" && calculation.multiplier !== null && <>
               <div className="result-values">
                 <div><span>Valore ante</span><strong>{euro.format(calculation.valueBefore)}</strong></div>
@@ -558,13 +669,19 @@ function PlantAnalysis({ unit, setUnit, plants, setPlants, updatePlant, calculat
           <label className="description">Descrizione<input value={plant.description} onChange={(event) => updatePlant(plant.id, { description: event.target.value })} /></label>
           <label>{plantType.metricLabel}<input type="number" min="0" step="0.01" value={(isPhotovoltaic ? plant.powerKw : plant.metricValue) || ""} onChange={(event) => updatePlant(plant.id, isPhotovoltaic ? { powerKw: Number(event.target.value) } : { metricValue: Number(event.target.value) })} /></label>
           <label>Anno<select value={plant.year} onChange={(event) => updatePlant(plant.id, { year: Number(event.target.value) })}>{Object.keys(coefficients).reverse().map((year) => <option key={year}>{year}</option>)}</select></label>
-          <label>Valore ordinario a nuovo (€)<input type="number" min="0" value={plant.cost || ""} onChange={(event) => updatePlant(plant.id, { cost: Number(event.target.value) })} /></label>
+          <label>Valore economico disponibile (€)<input type="number" min="0" value={plant.cost || ""} onChange={(event) => updatePlant(plant.id, { cost: Number(event.target.value) })} /></label>
+          <label>Base economica<select value={plant.costBasis} onChange={(event) => updatePlant(plant.id, { costBasis: event.target.value, applyReproductionUplift: event.target.value === "supply_install" ? plant.applyReproductionUplift : false })}><option value="">Da qualificare</option><option value="equipment">Solo apparecchiature</option><option value="supply_install">Fornitura e posa / CME</option><option value="reproduction">Costo di riproduzione chiavi in mano</option><option value="other">Altra base documentata</option></select></label>
           {plant.interventionNature === "improving_replacement" && <label>Valore dotazione equivalente (€)<input type="number" min="0" value={plant.baselineCost || ""} onChange={(event) => updatePlant(plant.id, { baselineCost: Number(event.target.value) })} /></label>}
           <label>Vita utile (anni)<input type="number" min="1" value={plant.usefulLife} onChange={(event) => updatePlant(plant.id, { usefulLife: Number(event.target.value) })} /></label>
           <label>Residuo finale (%)<input type="number" min="0" max="100" value={plant.residual} onChange={(event) => updatePlant(plant.id, { residual: Number(event.target.value) })} /></label>
           <label>Quota UIU (%)<input type="number" min="0" max="100" value={plant.share} onChange={(event) => updatePlant(plant.id, { share: Number(event.target.value) })} /></label>
           <label className="description">Fonte del valore<input value={plant.costSource} onChange={(event) => updatePlant(plant.id, { costSource: event.target.value })} placeholder="Preventivo depurato, listino, computo…" /></label>
         </div>
+        {plant.costBasis === "supply_install" && <div className="pv-gate">
+          <div><p className="mini-label">Base di costo</p><h4>Rialzo esplicito al costo di riproduzione</h4><p>Il riferimento 1,37 è desunto dalla prassi FVG e non è una regola nazionale. Non viene applicato automaticamente.</p></div>
+          <label className="toggle-line"><input type="checkbox" checked={plant.applyReproductionUplift} onChange={(event) => updatePlant(plant.id, { applyReproductionUplift: event.target.checked })} />Applica un fattore documentato</label>
+          {plant.applyReproductionUplift && <><label>Fattore di rialzo<input type="number" min="1" step="0.01" value={plant.upliftFactor} onChange={(event) => updatePlant(plant.id, { upliftFactor: Number(event.target.value) })} /></label><label className="description">Fonte e motivazione<input value={plant.upliftSource} onChange={(event) => updatePlant(plant.id, { upliftSource: event.target.value })} placeholder="Es. Nota tecnica FVG, componenti incluse e pertinenza al caso" /></label></>}
+        </div>}
         {isPhotovoltaic && <div className="pv-gate">
           <div><p className="mini-label">Gate Circolare 36/E/2013</p><h4>Verifica della modesta entità</h4></div>
           <label>UIU servite<input type="number" min="1" value={plant.servedUnits} onChange={(event) => updatePlant(plant.id, { servedUnits: Math.max(1, Number(event.target.value)) })} /></label>
@@ -574,7 +691,8 @@ function PlantAnalysis({ unit, setUnit, plants, setPlants, updatePlant, calculat
         </div>}
         <label className="included-check"><input type="checkbox" checked={plant.alreadyIncluded} onChange={(event) => updatePlant(plant.id, { alreadyIncluded: event.target.checked })} />Valore già considerato nella rendita in atti</label>
         {row?.exclusionReason && <div className="exclusion-note"><strong>Escluso dal calcolo</strong><span>{row.exclusionReason}</span>{row.exclusion?.source && <small>{row.exclusion.source}</small>}</div>}
-        <div className="plant-metrics"><span><small>Valore apprezzabile</small><strong>{euro.format(row?.assessableCost ?? 0)}</strong></span><span><small>Quota UIU</small><strong>{euro.format(row?.allocatedCost ?? 0)}</strong></span><span><small>Fattore infracensuario</small><strong>{percent.format((row?.depreciation ?? 0) * 100)}%</strong></span><span><small>Valore 1988–89</small><strong>{euro.format(row?.adjustedValue ?? 0)}</strong></span></div>
+        {row?.issues?.length > 0 && <div className="exclusion-note"><strong>Validazione: {row.status}</strong>{row.issues.map(({ code, message }: { code: string; message: string }) => <span key={code}>{message}</span>)}</div>}
+        <div className="plant-metrics"><span><small>Base normalizzata</small><strong>{euro.format(row?.normalizedNewValue ?? 0)}</strong></span><span><small>Valore apprezzabile</small><strong>{euro.format(row?.assessableCost ?? 0)}</strong></span><span><small>Quota UIU</small><strong>{euro.format(row?.allocatedCost ?? 0)}</strong></span><span><small>Fattore infracensuario</small><strong>{row?.depreciation === null ? "Non valido" : `${percent.format((row?.depreciation ?? 0) * 100)}%`}</strong></span><span><small>Valore 1988–89</small><strong>{euro.format(row?.adjustedValue ?? 0)}</strong></span></div>
       </div>;
     })}
     <div className="tariff-panel">
