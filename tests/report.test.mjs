@@ -8,9 +8,13 @@ const base = {
   unit: { caseName: "Caso dimostrativo", municipality: "Comune fittizio", censusZone: "", sheet: "", parcel: "", sub: "", category: "A/2", cadastralClass: "2", rent: 800, currentTariff: 0, nextTariff: 0 },
   coherence: "yes",
   changes: [],
+  works: [],
+  inventoryConfirmed: true,
   analysisPath: "plants",
-  plants: [{ typeId: "photovoltaic", description: "Fotovoltaico", variant: "Su edificio", interventionNature: "new", powerKw: 6, year: 2023, cost: 10_000, costSource: "Computo metrico", usefulLife: 20, residual: 0, share: 100 }],
-  calculation: { rows: [{ adjustedValue: 3_000, exclusionReason: null }], multiplier: 100, valueBefore: 80_000, plantValue: 3_000, valueAfter: 83_000, incidence: 3.75, threshold: 15, thresholdSource: "benchmark", localGap: null, convergenceStatus: "benchmark-only" },
+  recommendedPath: "plants",
+  overrideReason: "",
+  plants: [{ typeId: "photovoltaic", description: "Fotovoltaico", variant: "Su edificio", interventionNature: "new", powerKw: 6, year: 2023, cost: 10_000, costBasis: "reproduction", applyReproductionUplift: false, costSource: "Computo metrico", usefulLife: 20, residual: 0, share: 100 }],
+  calculation: { status: "valid", coefficientVersion: "test-v1", rows: [{ adjustedValue: 3_000, normalizedNewValue: 10_000, upliftFactor: 1, exclusionReason: null, issues: [] }], multiplier: 100, valueBefore: 80_000, plantValue: 3_000, valueAfter: 83_000, incidence: 3.75, threshold: 15, thresholdSource: "benchmark", localGap: null, convergenceStatus: "benchmark-only" },
   factors: [],
   evidence: {},
   notes: "Verifica effettuata su documentazione disponibile.",
@@ -30,6 +34,8 @@ test("describes the selected plant method and calculated values", () => {
   assert.match(markdown, /Incidenza calcolata: 3,75%/);
   assert.match(markdown, /Regola catastale specifica/);
   assert.match(markdown, /Fonte del valore: Computo metrico/);
+  assert.match(markdown, /Base economica dichiarata: Costo di riproduzione chiavi in mano/);
+  assert.match(markdown, /Versione tabella coefficienti: test-v1/);
 });
 
 test("creates an RTF document with unicode escapes", () => {
