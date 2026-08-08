@@ -3,6 +3,11 @@ export type PlantInput = {
   description: string;
   year: number;
   cost: number;
+  costSource?: string;
+  costBasis?: "" | "equipment" | "supply_install" | "reproduction" | "other";
+  applyReproductionUplift?: boolean;
+  upliftFactor?: number;
+  upliftSource?: string;
   usefulLife: number;
   residual: number;
   share: number;
@@ -17,20 +22,31 @@ export type PlantInput = {
 };
 
 export type CalculatedPlant = PlantInput & {
-  coefficient: number;
-  depreciation: number;
+  coefficient: number | undefined;
+  depreciation: number | null;
   allocatedCost: number;
   adjustedValue: number;
   ordinaryNewValue: number;
   baselineValue: number;
+  normalizedNewValue: number;
+  normalizedBaselineValue: number;
+  costBasis: string;
+  upliftFactor: number;
   assessableCost: number;
   exclusionReason: string | null;
   exclusion: null | { code: string; label: string; source: string };
+  issues: ValidationIssue[];
+  status: ValidationStatus;
 };
 
+export type ValidationStatus = "valid" | "warning" | "invalid";
+export type ValidationIssue = { severity: "warning" | "invalid"; code: string; message: string; row: number | null };
 export const coefficients: Readonly<Record<number, number>>;
+export const coefficientMetadata: Readonly<Record<string, unknown>>;
 export function multiplierFor(category: string): number | null;
-export function depreciationFactor(usefulLife: number, residual: number): number;
+export function categoryKind(category: string): "ordinary" | "special" | "invalid";
+export function validationStatus(issues: ValidationIssue[]): ValidationStatus;
+export function depreciationFactor(usefulLife: number, residual: number): number | null;
 export function calculatePlant(plant: PlantInput): CalculatedPlant;
 export function tariffGap(currentTariff: number, nextTariff: number): number | null;
 export function evaluateComparison(
@@ -49,6 +65,10 @@ export function calculateScenario(input: {
   currentTariff?: number;
   nextTariff?: number;
 }): {
+  status: ValidationStatus;
+  issues: ValidationIssue[];
+  categoryKind: "ordinary" | "special" | "invalid";
+  coefficientVersion: string;
   multiplier: number | null;
   rows: CalculatedPlant[];
   plantValue: number;
