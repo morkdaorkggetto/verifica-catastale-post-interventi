@@ -7,6 +7,8 @@ Il progetto nasce dall’analisi del foglio **“Verifica necessità Accatastame
 ## Cosa fa
 
 - identifica le mutazioni oggettive che rendono necessario il riesame catastale;
+- inventaria le opere e instrada automaticamente il metodo, tracciando le eventuali deroghe motivate;
+- valida gli input come `valid`, `warning` o `invalid`, senza trasformare errori in zeri silenziosi;
 - distingue il mero ampliamento impiantistico dagli interventi misti o edilizi;
 - applica il moltiplicatore coerente con la categoria catastale ordinaria;
 - calcola il deprezzamento infracensuario in funzione di vita utile e valore residuo;
@@ -24,6 +26,8 @@ Il progetto nasce dall’analisi del foglio **“Verifica necessità Accatastame
 - restituisce un esito graduato e motivato, non un automatismo privo di contesto;
 - salva i dati soltanto nel browser e produce una scheda stampabile.
 - genera una relazione tecnica dinamica in Markdown o RTF, con segnaposto limitati ai dati mancanti.
+- qualifica la base economica e rende esplicito ogni eventuale rialzo al costo di riproduzione;
+- gestisce categoria non riconosciuta, classe apicale e coefficiente 2020 sospetto senza produrre esiti falsamente conclusivi.
 
 ## Avvio locale
 
@@ -61,7 +65,7 @@ I dati inseriti restano nel `localStorage` del browser: il progetto non include 
 
 ## Stato del progetto
 
-Versione 0.4, destinata a verifica tecnica. La tabella annuale dei coefficienti deriva dal foglio 2026 del Collegio di Trento: la fonte statistica primaria e il processo di aggiornamento devono essere formalizzati prima della pubblicazione generalizzata.
+Versione 0.5, destinata a verifica tecnica. La tabella annuale dei coefficienti deriva dal foglio 2026 del Collegio di Trento: la fonte statistica primaria e il processo di aggiornamento devono essere formalizzati prima della pubblicazione generalizzata. Il dato 2020 è marcato come sospetto e non produce un esito conclusivo.
 
 Le categorie ENEA sono impiegate esclusivamente per descrivere correttamente gli impianti. Massimali, costi specifici e requisiti energetici delle agevolazioni non vengono assunti come valori catastali.
 
