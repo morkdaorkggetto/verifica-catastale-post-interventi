@@ -18,6 +18,18 @@ Il modello distingue tre situazioni:
 2. **Intervento misto** — impianti insieme a involucro, serramenti, ascensori, finiture o altre migliorie. Il 15% non è usato come soglia generale di esclusione.
 3. **Opere edilizie o qualitative** — è richiesta una valutazione tecnico-estimativa complessiva e comparativa.
 
+L’inventario degli interventi determina il percorso raccomandato. La scelta manuale di un metodo diverso resta possibile come deroga professionale, ma richiede una motivazione testuale conservata nella relazione.
+
+### Validazione degli input
+
+Ogni calcolo assume uno dei tre stati `valid`, `warning` o `invalid`:
+
+- `valid` — i dati consentono l’elaborazione;
+- `warning` — il calcolo è mostrato come riscontro provvisorio, ma l’esito resta non conclusivo;
+- `invalid` — calcolo ed esportazione sono bloccati fino alla correzione.
+
+Anno fuori tabella, categoria non riconosciuta, quota fuori dall’intervallo 0–100%, vita utile o residuo incompatibili, costo negativo e differenza incrementale incoerente non vengono trasformati in zero o corretti silenziosamente.
+
 ## 4. Calcolo per i soli impianti
 
 Per ogni impianto:
@@ -31,6 +43,8 @@ deprezzamento = 1 − [(1 − valore_residuo) × 10] / (2 × vita_utile)
 
 valore_1988_89 = quota_UIU × deprezzamento × coefficiente_anno
 ```
+
+Il valore a nuovo viene prima qualificato come costo delle sole apparecchiature, fornitura e posa/CME, costo di riproduzione chiavi in mano oppure altra base documentata. Un eventuale rialzo dalla fornitura e posa al costo di riproduzione è applicato soltanto se attivato dal tecnico, con fattore e fonte espliciti. Il valore suggerito `1,37`, desunto dalla ricomposizione delle tabelle della prassi FVG, non costituisce un coefficiente nazionale e non viene applicato automaticamente.
 
 Il valore ante operam è:
 
@@ -55,6 +69,8 @@ Prima del calcolo si applicano i gate pertinenti:
 
 La vita utile di 20 anni e il residuo zero sono un’impostazione iniziale di prima approssimazione, non una regola tecnologica specifica. Il tecnico può modificarli se dispone di uno studio di settore pertinente.
 
+Il coefficiente 2020 della tabella di origine è marcato come dato sospetto. Il calcolo resta visibile ma assume stato `warning` e non produce un esito conclusivo finché la serie non viene validata su una fonte primaria.
+
 ## 5. Confronto con lo scarto tariffario locale
 
 Quando sono disponibili le tariffe della classe in atti e di quella immediatamente successiva, lo scarto effettivo è calcolato come:
@@ -64,6 +80,8 @@ scarto_locale = (tariffa_successiva - tariffa_attuale) / tariffa_attuale × 100
 ```
 
 Il dato è mostrato insieme al benchmark del 15%, non in sua sostituzione. Se entrambi sono superati o entrambi non superati l’app segnala convergenza; se forniscono indicazioni diverse restituisce una **zona di incertezza**. Nessuno dei due sostituisce la comparazione con le unità tipo.
+
+Se la UIU è già nella classe apicale o manca una classe successiva nella zona, il motore non inventa una tariffa contigua e non riconduce automaticamente il caso al solo benchmark del 15%. Richiede riferimenti in un’altra zona censuaria dello stesso Comune o in un Comune analogo della provincia.
 
 ## 6. Catalogo degli impianti
 
