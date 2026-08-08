@@ -13,8 +13,12 @@ import { photovoltaicExclusion, plantTypeFor } from "../lib/plants.mjs";
 const basePlant = {
   id: 1,
   description: "Fotovoltaico",
+  typeId: "other_fixed",
+  interventionNature: "new",
   year: 2023,
   cost: 100_000,
+  costBasis: "reproduction",
+  costSource: "Stima documentata",
   usefulLife: 20,
   residual: 0,
   share: 100,
@@ -32,6 +36,14 @@ test("uses category-specific multipliers", () => {
   assert.equal(multiplierFor("A/10"), 50);
   assert.equal(multiplierFor("C/1"), 34);
   assert.equal(multiplierFor("D/E o categoria speciale"), null);
+  assert.equal(multiplierFor("categoria non valida"), null);
+});
+
+test("rejects invalid infracensual parameters instead of coercing them", () => {
+  assert.equal(depreciationFactor(0, 0), null);
+  assert.equal(depreciationFactor(20, 120), null);
+  assert.equal(calculatePlant({ ...basePlant, share: -5 }).status, "invalid");
+  assert.equal(calculatePlant({ ...basePlant, year: 1987 }).status, "invalid");
 });
 
 test("calculates a 2023 plant at the 1988-89 epoch", () => {
@@ -90,6 +102,48 @@ test("values only the incremental part of an improving replacement", () => {
   assert.equal(result.assessableCost, 40_000);
   assert.equal(result.adjustedValue, 12_252);
   assert.equal(calculatePlant({ ...basePlant, interventionNature: "equivalent_replacement" }).adjustedValue, 0);
+});
+
+test("keeps the reproduction uplift explicit and sourced", () => {
+  const result = calculatePlant({
+    ...basePlant,
+    costBasis: "supply_install",
+    applyReproductionUplift: true,
+    upliftFactor: 1.37,
+    upliftSource: "Nota tecnica FVG, applicabilità motivata",
+  });
+  assert.equal(result.status, "valid");
+  assert.equal(result.normalizedNewValue, 137_000);
+  assert.equal(result.adjustedValue, 41_963.1);
+  assert.equal(calculatePlant({ ...basePlant, costBasis: "supply_install" }).status, "warning");
+});
+
+test("marks the unvalidated 2020 coefficient without silently concluding", () => {
+  const result = calculatePlant({ ...basePlant, year: 2020 });
+  assert.equal(result.status, "warning");
+  assert.equal(result.issues[0].code, "coefficient-suspect");
+});
+
+test("does not require economic inputs for a documented exclusion", () => {
+  const result = calculatePlant({
+    ...basePlant,
+    typeId: "photovoltaic",
+    powerKw: 3,
+    servedUnits: 1,
+    costBasis: "",
+    costSource: "",
+  });
+  assert.equal(result.status, "valid");
+  assert.equal(result.adjustedValue, 0);
+});
+
+test("blocks unknown categories instead of assigning multiplier 100", () => {
+  const result = calculateScenario({ category: "D/1", rent: 800, plants: [basePlant] });
+  assert.equal(result.categoryKind, "special");
+  assert.equal(result.multiplier, null);
+  const invalid = calculateScenario({ category: "", rent: 800, plants: [basePlant] });
+  assert.equal(invalid.status, "invalid");
+  assert.equal(invalid.issues.some(({ code }) => code === "category-invalid"), true);
 });
 
 test("exposes technical plant categories without inventing cadastral coefficients", () => {
