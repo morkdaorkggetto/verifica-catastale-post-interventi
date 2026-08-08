@@ -13,6 +13,7 @@
 9. **D.M. 14 dicembre 1991, n. 5646** — moltiplicatori applicati alla rendita per la determinazione del valore catastale ante intervento.
 10. **D.M. 6 agosto 2020, “Requisiti tecnici”** — tassonomia tecnica e grandezze degli interventi energetici; è usato per descrivere gli impianti, non per attribuire valori catastali.
 11. **Vademecum ENEA Ecobonus** — articolazione operativa di pompe di calore, sistemi ibridi, biomassa, solare termico, microcogenerazione e building automation.
+12. **Nota tecnica Direzione regionale AdE Friuli-Venezia Giulia, prot. 20110_2024_922** — prassi territoriale su fotovoltaico e accumulo, costo di riproduzione e deprezzamento infracensuario; è un riscontro dichiarato, non una regola nazionale automatica.
 
 ## Collegamenti
 
@@ -36,12 +37,14 @@
 | Massimali o costi unitari fiscali ENEA | Non utilizzati | Finalità fiscale diversa dalla stima catastale |
 | Sostituzione equivalente | Nessun valore incrementale nel modello | Separazione tra ripristino e ampliamento della dotazione |
 | Sostituzione migliorativa | Solo differenza documentata | Criterio prudenziale di incrementalità da motivare |
+| Rialzo `1,37` | Parametro facoltativo, esplicito e sovrascrivibile; mai automatico | Ricostruzione della base di costo nelle tabelle FVG, prassi territoriale |
+| Coefficiente 2020 `0,4472` | `warning` non conclusivo | Anomalia interna della tabella Trento, fonte primaria ancora da validare |
 
 ## Elementi da validare prima della distribuzione pubblica
 
 - fonte statistica primaria dei coefficienti annuali di ragguaglio;
 - procedura e cadenza di aggiornamento della tabella;
-- moltiplicatori applicabili alle diverse categorie nel preciso contesto estimativo richiamato dalla Risoluzione;
+- metadati completi dei moltiplicatori base del D.M. 5646/1991, senza rivalutazioni estranee al confronto estimativo;
 - criteri territoriali per verificare le differenze percentuali tra classi contigue;
 - casi nei quali la modifica planimetrica non produce autonomamente un nuovo classamento ma richiede comunque la presentazione DOCFA;
 - categorie speciali e particolari, escluse dall’attuale MVP;
