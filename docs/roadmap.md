@@ -34,6 +34,28 @@
 - doppio riscontro fra benchmark del 15% e scarto tariffario locale;
 - motivazione delle esclusioni nella relazione esportabile.
 
+## 0.5 — Affidabilità minima del motore
+
+- validazione bloccante e tri-stato `valid` / `warning` / `invalid`;
+- inventario obbligatorio degli interventi e instradamento automatico del metodo;
+- deroga professionale ammessa soltanto se motivata e tracciata;
+- base economica qualificata e rialzo al costo di riproduzione sempre esplicito;
+- categorie normalizzate, senza moltiplicatore predefinito per valori sconosciuti;
+- gate dedicato alla classe apicale;
+- coefficiente 2020 segnalato come non validato e incapace di produrre un esito conclusivo.
+
+## 0.6 — Fonti e tracciabilità
+
+- registro esterno e versionato delle fonti;
+- tracciabilità completa di dati, formule, trasformazioni e arrotondamenti;
+- ricostruzione e validazione primaria dell’intera serie dei coefficienti.
+
+## 0.7 — Fascicolo comparativo
+
+- evidenze comparative strutturate per fonte e pertinenza;
+- livelli di robustezza dell’esito qualitativo;
+- relazione DOCFA estesa senza punteggi decisori artificiali.
+
 ## 1.0 — Distribuzione
 
 - revisione tecnico-legale indipendente;
